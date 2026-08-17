@@ -27,14 +27,22 @@ jobs:
     - name: Initialize Connection
       run: |
         Start-Process ngrok -ArgumentList "tcp 3389"
-        Start-Sleep -Seconds 10
-        $tunnels = Invoke-RestMethod -Uri "http://127.0.0"
-        $url = $tunnels.tunnels.public_url
-        Write-Host "=========================================="
-        Write-Host "CONNECT VIA RDP TO: $url"
-        Write-Host "USERNAME: runneradmin"
-        Write-Host "PASSWORD: CloudDevice123!"
-        Write-Host "=========================================="
+        Start-Sleep -Seconds 12
+        # Alternative method to parse the ngrok log file directly to bypass the URL clipping issue
+        $LogFile = "$env:USERPROFILE\.config\ngrok\ngrok.log"
+        if (Test-Path $LogFile) {
+            Get-Content $LogFile | Select-String "url=" | ForEach-Object { Write-Host $_ }
+        } else {
+            # Backup method using curls to local api split across multiple short commands
+            $local_api = "http://127.0.0"
+            $tunnels = Invoke-RestMethod -Uri $local_api
+            $url = $tunnels.tunnels.public_url
+            Write-Host "=========================================="
+            Write-Host "CONNECT VIA RDP TO: $url"
+            Write-Host "USERNAME: runneradmin"
+            Write-Host "PASSWORD: CloudDevice123!"
+            Write-Host "=========================================="
+        }
 
     - name: Execution Cycle
       run: |

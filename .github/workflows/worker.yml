@@ -9,14 +9,13 @@ jobs:
     steps:
     - name: Setup Environment
       run: |
-        Invoke-WebRequest -Uri "https://equinox.io" -OutFile "ngrok.zip"
-        Expand-Archive -Path "ngrok.zip" -DestinationPath "."
+        choco install ngrok -y
         
     - name: Authenticate Tunnel
       env:
         NGROK_TOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
       run: |
-        .\ngrok.exe config add-authtoken "$env:NGROK_TOKEN"
+        ngrok config add-authtoken "$env:NGROK_TOKEN"
 
     - name: Enable Remote Desktop
       run: |
@@ -27,8 +26,8 @@ jobs:
 
     - name: Initialize Connection
       run: |
-        Start-Process .\ngrok.exe -ArgumentList "tcp 3389"
-        Start-Sleep -Seconds 7
+        Start-Process ngrok -ArgumentList "tcp 3389"
+        Start-Sleep -Seconds 10
         $tunnels = Invoke-RestMethod -Uri "http://127.0.0"
         $url = $tunnels.tunnels.public_url
         Write-Host "=========================================="

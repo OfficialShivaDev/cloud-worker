@@ -1,0 +1,45 @@
+name: Cloud Environment Worker
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Setup Environment
+      run: |
+        Invoke-WebRequest -Uri "https://equinox.io" -OutFile "ngrok.zip"
+        Expand-Archive -Path "ngrok.zip" -DestinationPath "."
+        
+    - name: Authenticate Tunnel
+      env:
+        NGROK_TOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
+      run: |
+        .\ngrok.exe config add-authtoken "$env:NGROK_TOKEN"
+
+    - name: Enable Remote Desktop
+      run: |
+        Set-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' -Name "fDenyTSConnections" -Value 0
+        Enable-NetFirewallRule -DisplayGroup "Remote Desktop"
+        $Password = ConvertTo-SecureString "CloudDevice123!" -AsPlainText -Force
+        Set-LocalUser -Name "runneradmin" -Password $Password
+
+    - name: Initialize Connection
+      run: |
+        Start-Process .\ngrok.exe -ArgumentList "tcp 3389"
+        Start-Sleep -Seconds 7
+        $tunnels = Invoke-RestMethod -Uri "http://127.0.0"
+        $url = $tunnels.tunnels.public_url
+        Write-Host "=========================================="
+        Write-Host "CONNECT VIA RDP TO: $url"
+        Write-Host "USERNAME: runneradmin"
+        Write-Host "PASSWORD: CloudDevice123!"
+        Write-Host "=========================================="
+
+    - name: Execution Cycle
+      run: |
+        for ($i=1; $i -le 350; $i++) {
+            Write-Host "Session Keep-Alive: Minute $i / 350"
+            Start-Sleep -Seconds 60
+        }

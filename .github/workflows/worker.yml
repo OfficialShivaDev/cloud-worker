@@ -16,35 +16,37 @@ jobs:
 
     - name: Initialize Connection
       run: |
-        # Pinggy establishes an SSH-backed tunnel without separate client software
-        Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -p 443 -R0:localhost:3389 tcp@a.pinggy.io" -RedirectStandardOutput "pinggy.log" -NoNewWindow
-        Start-Sleep -Seconds 12
+        # 1. Start a background SSH tunnel using localhost.run targeting your RDP port (3389)
+        Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -R 80:localhost:3389 tunnel.us.localhost.run" -RedirectStandardOutput "tunnel.log" -NoNewWindow
         
-        # Read the generated URL data from log tracking
-        $log = Get-Content "pinggy.log" -Raw
+        # 2. Give the tunnel 10 seconds to generate the public routing link
+        Start-Sleep -Seconds 10
         
-        Write-Host "=========================================="
-        Write-Host "             TUNNEL STARTED               "
-        Write-Host "=========================================="
-        Write-Host "LOOK FOR YOUR RDP ADDRESS IN THE LOG LINE BELOW:"
-        Write-Host $log
-        Write-Host "=========================================="
-        Write-Host "USERNAME: runneradmin"
-        Write-Host "PASSWORD: CloudDevice123!"
-        Write-Host "=========================================="
+        # 3. Read the log file to extract the public domain string
+        $LogContent = Get-Content "tunnel.log" -Raw
         
-        # Save connection parameters locally
-        $log | Out-File -FilePath "connection_info.txt"
+        # 4. Use a regular expression to find the exact address text inside the log
+        if ($LogContent -match "([a-zA-Z0-9-]+\.tunnel\.us\.localhost\.run)") {
+            $Address = $Matches[0]
+            Write-Host "=========================================="
+            Write-Host "             TUNNEL ONLINE                "
+            Write-Host "=========================================="
+            Write-Host "YOUR RDP ADDRESS IS: $Address"
+            Write-Host "USERNAME: runneradmin"
+            Write-Host "PASSWORD: CloudDevice123!"
+            Write-Host "=========================================="
+        } else {
+            Write-Host "=========================================="
+            Write-Host "ERROR: Tunnel link generation delayed."
+            Write-Host "Raw Log contents below:"
+            Write-Host $LogContent
+            Write-Host "=========================================="
+        }
 
-    - name: Upload Connection Details
-      uses: actions/upload-artifact@v4
-      with:
-        name: rdp-credentials
-        path: connection_info.txt
-
-    - name: Execution Cycle
+    - name: Execution Cycle (6 Hours)
       run: |
-        for ($i=1; $i -le 60; $i++) {
-            Write-Host "Session Keep-Alive: Minute $i / 60"
+        # Loops safely for 5 hours and 50 minutes to keep the cloud machine alive
+        for ($i=1; $i -le 350; $i++) {
+            Write-Host "Session Keep-Alive: Minute $i / 350"
             Start-Sleep -Seconds 60
         }

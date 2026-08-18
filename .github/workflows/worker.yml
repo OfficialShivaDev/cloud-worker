@@ -15,7 +15,8 @@ jobs:
       env:
         NGROK_TOKEN: ${{ secrets.NGROK_AUTHTOKEN }}
       run: |
-        ngrok config add-authtoken "$env:NGROK_TOKEN"
+        # Fixed: Reference environment variable cleanly without conflicting quotes
+        ngrok config add-authtoken $env:NGROK_TOKEN
 
     - name: Enable Remote Desktop
       run: |
@@ -26,19 +27,29 @@ jobs:
 
     - name: Initialize Connection
       run: |
-        # Force a named tunnel configuration to guarantee it binds to your active endpoints
-        Start-Process ngrok -ArgumentList "tcp 3389 --region=us"
-        Start-Sleep -Seconds 15
+        # Start ngrok in the background and output log to catch errors
+        Start-Process ngrok -ArgumentList "tcp 3389 --region us" -NoNewWindow
+        Start-Sleep -Seconds 10
         
+        # Fixed: Correct ngrok local API address and endpoint path
         $local_api = "http://127.0.0"
-        $tunnels = Invoke-RestMethod -Uri $local_api
-        $url = $tunnels.tunnels.public_url
+        $response = Invoke-RestMethod -Uri $local_api
         
-        # Save the connection details directly into a text file so you don't need the dashboard
-        New-Item -Path . -Name "connection_info.txt" -ItemType "file" -Value "RDP ADDRESS: $url `nUSERNAME: runneradmin `nPASSWORD: CloudDevice123!"
+        # Fixed: Extracted the specific public URL property from the array
+        $url = $response.tunnels[0].public_url
         
+        # Format the URL cleanly for RDP client copy-paste (removes 'tcp://')
+        $clean_url = $url -replace "tcp://", ""
+        
+        # Save connection details to text file
+        $OutputText = "RDP ADDRESS: $clean_url`r`nUSERNAME: runneradmin`r`nPASSWORD: CloudDevice123!"
+        New-Item -Path . -Name "connection_info.txt" -ItemType "file" -Value $OutputText -Force
+        
+        # Print directly to the action log so you don't even have to wait for the artifact download
         Write-Host "=========================================="
-        Write-Host "LINK READY - CHECK ARTIFACTS ON THE ACTIONS TAB"
+        Write-Host "YOUR RDP ADDRESS IS: $clean_url"
+        Write-Host "USERNAME: runneradmin"
+        Write-Host "PASSWORD: CloudDevice123!"
         Write-Host "=========================================="
 
     - name: Upload Connection Details

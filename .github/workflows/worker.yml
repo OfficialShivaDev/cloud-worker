@@ -26,10 +26,19 @@ jobs:
         Set-LocalUser -Name "runneradmin" -Password $Password
 
     - name: Initialize Connection
-      run: |
-        # Start ngrok in the background and output log to catch errors
-        Start-Process ngrok -ArgumentList "tcp 3389 --region us" -NoNewWindow
-        Start-Sleep -Seconds 10
+        run: |
+          # Open a TCP tunnel to port 3389 using Pinggy over native SSH
+          # It outputs the public address straight to a log file
+          Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -p 443 -R0:localhost:3389 tcp@a.pinggy.io" -RedirectStandardOutput "pinggy.log" -NoNewWindow
+          Start-Sleep -Seconds 10
+      
+      # Read the log file and find your public RDP address
+      $log = Get-Content "pinggy.log" -Raw
+      Write-Host "=========================================="
+      Write-Host "PINGGY LOG OUTPUT:"
+      Write-Host $log
+      Write-Host "=========================================="
+
         
         # Fixed: Correct ngrok local API address and endpoint path
         $local_api = "http://127.0.0"

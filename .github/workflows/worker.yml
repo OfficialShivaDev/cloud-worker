@@ -16,18 +16,17 @@ jobs:
 
     - name: Initialize Connection
       run: |
-        # 1. Start a background SSH tunnel using localhost.run targeting your RDP port (3389)
-        Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -R 80:localhost:3389 tunnel.us.localhost.run" -RedirectStandardOutput "tunnel.log" -NoNewWindow
+        # Download the Pagekite python script directly
+        Invoke-WebRequest -Uri "https://pagekite.net" -OutFile "pagekite.py"
         
-        # 2. Give the tunnel 10 seconds to generate the public routing link
-        Start-Sleep -Seconds 10
+        # Start Pagekite background tunnel mapping public HTTP/TCP to 3389
+        Start-Process python -ArgumentList "pagekite.py 3389 tcp.pagekite.me" -RedirectStandardOutput "kite.log" -NoNewWindow
+        Start-Sleep -Seconds 15
         
-        # 3. Read the log file to extract the public domain string
-        $LogContent = Get-Content "tunnel.log" -Raw
-        
-        # 4. Use a regular expression to find the exact address text inside the log
-        if ($LogContent -match "([a-zA-Z0-9-]+\.tunnel\.us\.localhost\.run)") {
-            $Address = $Matches[0]
+        # Parse the connection link from the log
+        $LogContent = Get-Content "kite.log" -Raw
+        if ($LogContent -match "([a-zA-Z0-9-]+\.pagekite\.me:\d+)") {
+            $Address = $Matches[1]
             Write-Host "=========================================="
             Write-Host "             TUNNEL ONLINE                "
             Write-Host "=========================================="
@@ -37,15 +36,19 @@ jobs:
             Write-Host "=========================================="
         } else {
             Write-Host "=========================================="
-            Write-Host "ERROR: Tunnel link generation delayed."
-            Write-Host "Raw Log contents below:"
-            Write-Host $LogContent
+            Write-Host "Tunnel connection is starting up..."
+            Write-Host "Please check the 'Live Tunnel Monitor' step below for your link."
             Write-Host "=========================================="
         }
 
+    - name: Live Tunnel Monitor
+      run: |
+        # Fallback step that prints the raw log file directly to your screen
+        Start-Sleep -Seconds 10
+        Get-Content "kite.log" -Tail 20
+
     - name: Execution Cycle (6 Hours)
       run: |
-        # Loops safely for 5 hours and 50 minutes to keep the cloud machine alive
         for ($i=1; $i -le 350; $i++) {
             Write-Host "Session Keep-Alive: Minute $i / 350"
             Start-Sleep -Seconds 60

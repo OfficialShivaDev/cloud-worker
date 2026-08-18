@@ -1,4 +1,4 @@
-name: Cloud Environment Worker (Free Tunnel)
+name: Cloud Environment Worker
 
 on: 
   workflow_dispatch:
@@ -14,10 +14,9 @@ jobs:
         $Password = ConvertTo-SecureString "CloudDevice123!" -AsPlainText -Force
         Set-LocalUser -Name "runneradmin" -Password $Password
 
-     Sir, what this step does is initialize a clean TCP tunnel targeting your RDP port (3389)
     - name: Initialize Connection
       run: |
-        # Pinggy establishes an SSH-backed tunnel without downloading separate client executables
+        # Pinggy establishes an SSH-backed tunnel without separate client software
         Start-Process ssh -ArgumentList "-o StrictHostKeyChecking=no -p 443 -R0:localhost:3389 tcp@a.pinggy.io" -RedirectStandardOutput "pinggy.log" -NoNewWindow
         Start-Sleep -Seconds 12
         

@@ -16,37 +16,21 @@ jobs:
 
     - name: Initialize Connection
       run: |
-        # Download the Pagekite python script directly
-        Invoke-WebRequest -Uri "https://pagekite.net" -OutFile "pagekite.py"
+        # Download the official cloudflared binary
+        Invoke-WebRequest -Uri "https://github.com" -OutFile "cloudflared.exe"
         
-        # Start Pagekite background tunnel mapping public HTTP/TCP to 3389
-        Start-Process python -ArgumentList "pagekite.py 3389 tcp.pagekite.me" -RedirectStandardOutput "kite.log" -NoNewWindow
+        # Start a quick ad-hoc TCP tunnel pointing to the local RDP port
+        Start-Process .\cloudflared.exe -ArgumentList "tunnel --url tcp://localhost:3389" -RedirectStandardError "cf.log" -NoNewWindow
         Start-Sleep -Seconds 15
         
-        # Parse the connection link from the log
-        $LogContent = Get-Content "kite.log" -Raw
-        if ($LogContent -match "([a-zA-Z0-9-]+\.pagekite\.me:\d+)") {
-            $Address = $Matches[1]
-            Write-Host "=========================================="
-            Write-Host "             TUNNEL ONLINE                "
-            Write-Host "=========================================="
-            Write-Host "YOUR RDP ADDRESS IS: $Address"
-            Write-Host "USERNAME: runneradmin"
-            Write-Host "PASSWORD: CloudDevice123!"
-            Write-Host "=========================================="
-        } else {
-            Write-Host "=========================================="
-            Write-Host "Tunnel connection is starting up..."
-            Write-Host "Please check the 'Live Tunnel Monitor' step below for your link."
-            Write-Host "=========================================="
-        }
-
-    - name: Live Tunnel Monitor
-      run: |
-        # Fallback step that prints the raw log file directly to your screen
-        Start-Sleep -Seconds 10
-        Get-Content "kite.log" -Tail 20
-
+        # Read the error log where cloudflared dumps its initialization URLs
+        $LogContent = Get-Content "cf.log" -Raw
+        Write-Host "=========================================="
+        Write-Host "         CLOUDFLARE LOG OUTPUT            "
+        Write-Host "=========================================="
+        Write-Host $LogContent
+        Write-Host "=========================================="
+        
     - name: Execution Cycle (6 Hours)
       run: |
         for ($i=1; $i -le 350; $i++) {
